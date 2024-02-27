@@ -1,5 +1,6 @@
 const Teacher = require("./../Model/Teacher");
 const Class = require("./../Model/Class");
+const Child = require("./../Model/Child");
 const mongoose = require('mongoose');
 const AutoIncrement = require('mongoose-sequence')(mongoose);
 
@@ -15,10 +16,18 @@ exports.getAllClasses=(req, res, next)=>{
     });
 }
 
-exports.addNewClass=(req, res, next)=>{
+exports.addNewClass= async (req, res, next)=>{
     const obj = new Class(req.body);
+    try {
+        let existChild = await Child.find({ _id: { $in: req.body.children } });
+        let existSuper = await Teacher.findById(req.body.supervisor);
+    } catch (error) {
+        return next(error);
+    }
     obj.save()
     .then(data=>{
+        if(!(existChild.length == req.body.children.length && existSuper))
+            return next(new Error("supervisor or child doesn't exist"));
         res.status(201).json({data});
     })
     .catch(error=>{
@@ -26,18 +35,33 @@ exports.addNewClass=(req, res, next)=>{
     })
 }
 
-exports.updateClassData = (req, res, next)=>{
-    let ID = req.body._id;
-    delete req.body._id;
-    Class.findByIdAndUpdate(ID, req.body)
-    .populate({ path: "supervisor", select: {_id: 0, fullname: 1 } }) 
-    .then(data=>{
-        data?res.status(200).json({data}):next(new Error("Class not found"));
-    })
-    .catch(error=>{
+exports.updateClassData = async (req, res, next) => {
+    try {
+        let ID = req.body._id;
+        delete req.body._id;
+
+        const updatedClass = await Class.findByIdAndUpdate(ID, req.body)
+            .populate({ path: "supervisor", select: { _id: 0, fullname: 1 } });
+
+        if (req.body.children) {
+            const existChild = await Child.find({ _id: { $in: req.body.children } });
+            if (existChild.length !== req.body.children.length) {
+                return next(new Error("child doesn't exist"));
+            }
+        }
+
+        if (req.body.supervisor) {
+            const supervisorData = await Teacher.findById(req.body.supervisor);
+            if (!supervisorData) {
+                return res.status(400).json({ "error": "supervisor doesn't exist" });
+            }
+        }
+
+        updatedClass ? res.status(200).json({ data: updatedClass }) : next(new Error("Class not found"));
+    } catch (error) {
         next(error);
-    })
-}
+    }
+};
 
 exports.getClassById=(req, res, next)=>{
     Class.findById(req.params.id)

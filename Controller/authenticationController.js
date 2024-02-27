@@ -27,19 +27,9 @@ exports.login = async(req, res, next) => {
         res.status(200).json({ data: "Authenticated", token });
         return;
     }
+    
     // if it was a teacher
-
-    // let hashed;
-    // try {
-    //     const salt = await bcrypt.genSalt(10);
-    //     hashed = await bcrypt.hash(password, salt);
-    // } catch (error) {
-    //     next("lol error"+error);
-    // }
-
     Teacher.findOne({
-        // fullname: fullname,
-        // password: hashed
         email: req.body.email     
     })
     .then(object => {

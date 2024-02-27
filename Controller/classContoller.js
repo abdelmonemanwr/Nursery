@@ -26,7 +26,6 @@ exports.addNewClass=(req, res, next)=>{
     })
 }
 
-// BUG!
 exports.updateClassData = (req, res, next)=>{
     let ID = req.body._id;
     delete req.body._id;
